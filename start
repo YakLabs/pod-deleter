@@ -1,0 +1,18 @@
+#!/bin/bash
+set -e
+
+#how often to run
+FREQUENCY=${FREQUENCY:-90}
+
+while true; do
+    NOW=`date +%s`
+    kubectl get pods --all-namespaces| awk '/Terminating/ {print $1,$2}' \
+        | while read NAMESPACE POD; do
+              NODE=`kubectl get pod --namespace=${NAMESPACE} ${POD} -o json | jq -r .spec.nodeName`
+              VAL=`kubectl get node ${NODE} 2>/dev/null || true`
+              if [ -z "${VAL}" ]; then
+                  kubectl delete pod --namespace=${NAMESPACE} ${POD} --grace-period=0
+              fi
+          done
+    sleep ${FREQUENCY}
+done
